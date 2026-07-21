@@ -23,6 +23,10 @@ steps:
     arrow: "->>"
     label: "POST /login"
     title: "ログインリクエスト"
+    note:
+      text: "HTTPS通信で暗号化"
+      actor: browser
+      align: left
     description: |
       ブラウザがAPIサーバーにHTTPS経由でPOSTリクエストを送ります。
       リクエストボディにはメールアドレスとパスワードが含まれます。
@@ -40,6 +44,16 @@ steps:
         \`\`\`sql
         SELECT * FROM users WHERE email = ?;
         \`\`\`
+
+  - note:
+      text: |
+        パスワードハッシュの
+        検証処理を行います
+      actor: api
+      align: over
+    title: "パスワード検証"
+    description: |
+      DBから取得したハッシュ化パスワードと入力されたパスワードを照合します。
 
   - from: db
     to: api
@@ -80,34 +94,40 @@ steps:
   - from: browser
     to: api
     arrow: "->>"
-    message: "POST /orders"
+    label: "POST /orders"
+    title: "注文作成要求"
     description: "カート情報をもとに注文を作成します。"
   - from: api
     to: db
     arrow: "->>"
-    message: "Create pending order"
+    label: "Create pending order"
+    title: "注文保留データ保存"
     description: "ステータスを「保留中」にして注文レコードをDBに作成します。"
   - from: api
     to: payment
     arrow: "->>"
-    message: "Charge request"
+    label: "Charge request"
+    title: "課金要求"
     description: "決済サービスへ課金リクエストを送ります。"
   - from: payment
     to: api
     arrow: "-->>"
-    message: "Charge success"
+    label: "Charge success"
+    title: "課金結果受領"
     description: "決済成功のレスポンスを受け取ります。"
   - from: api
     to: db
     arrow: "->>"
-    message: "Update order status to paid"
+    label: "Update order status to paid"
+    title: "ステータス更新"
     description: "注文ステータスを「決済完了」に更新します。"
   - from: api
     to: browser
     arrow: "-->>"
-    message: "Order confirmation"
+    label: "Order confirmation"
+    title: "注文完了レスポンス"
     description: "注文完了画面を表示します。"
-`
+`;
 
 export interface AppState {
   yaml: string
@@ -551,7 +571,7 @@ export class App {
     // Label
     if (currentStep >= 0 && seq) {
       const step = seq.steps[currentStep]
-      this.stepLabelEl.textContent = step.title ?? step.label
+      this.stepLabelEl.textContent = step.title ?? step.label ?? ''
     } else {
       this.stepLabelEl.textContent = seq ? 'スタート前' : ''
     }
@@ -587,27 +607,47 @@ export class App {
     }
 
     const step = seq.steps[currentStep]
-    const fromP = seq.participants.find((p) => p.id === step.from)
-    const toP = seq.participants.find((p) => p.id === step.to)
+    const hasArrow = step.from !== undefined && step.to !== undefined
+    let arrowRow = ''
 
-    const arrowSymbol: Record<string, string> = {
-      '->': '→', '-->': '--→', '->>': '→▶', '-->>': '--→▶',
-      '-x': '→✕', '--x': '--→✕', '-)': '→)', '---)': '--→)',
+    if (hasArrow) {
+      const fromP = seq.participants.find((p) => p.id === step.from)
+      const toP = seq.participants.find((p) => p.id === step.to)
+      const arrowSymbol: Record<string, string> = {
+        '->': '→', '-->': '--→', '->>': '→▶', '-->>': '--→▶',
+        '-x': '→✕', '--x': '--→✕', '-)': '→)', '---)': '--→)',
+      };
+      const arrow = step.arrow ?? '->>'
+      arrowRow = `
+        <div class="desc-arrow-row">
+          <span class="desc-participant">${esc(fromP?.label ?? step.from ?? '')}</span>
+          <span class="desc-arrow-symbol">${arrowSymbol[arrow] ?? '→'}</span>
+          <span class="desc-participant">${esc(toP?.label ?? step.to ?? '')}</span>
+          <code class="desc-arrow-code">${esc(arrow)}</code>
+        </div>
+        <div class="desc-divider"></div>
+      `;
+    } else if (step.note) {
+      const n = step.note
+      const actorP = seq.participants.find((p) => p.id === n.actor)
+      const alignLabel = n.align === 'left' ? 'の左側' : n.align === 'right' ? 'の右側' : 'のライフライン上'
+      arrowRow = `
+        <div class="desc-arrow-row" style="display: flex; align-items: center;">
+          <span class="desc-note-badge" style="background: #eab30820; color: #fef08a; border: 1px solid #d4af3740; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 8px;">Note</span>
+          <span class="desc-participant">${esc(actorP?.label ?? n.actor)}</span>
+          <span class="desc-arrow-symbol" style="margin-left: 6px; font-size: 12px; color: var(--color-text-dim);">${alignLabel}</span>
+        </div>
+        <div class="desc-divider"></div>
+      `;
     }
 
     descEl.innerHTML = `
       <div class="desc-animate">
         <div class="desc-step-header">
           <span class="desc-step-badge">Step ${currentStep + 1}</span>
-          <span class="desc-step-title">${esc(step.title ?? step.label)}</span>
+          <span class="desc-step-title">${esc(step.title ?? step.label ?? '')}</span>
         </div>
-        <div class="desc-arrow-row">
-          <span class="desc-participant">${esc(fromP?.label ?? step.from)}</span>
-          <span class="desc-arrow-symbol">${arrowSymbol[step.arrow] ?? '→'}</span>
-          <span class="desc-participant">${esc(toP?.label ?? step.to)}</span>
-          <code class="desc-arrow-code">${esc(step.arrow)}</code>
-        </div>
-        <div class="desc-divider"></div>
+        ${arrowRow}
         ${step.description
           ? `<div class="desc-text prose">${marked.parse(step.description) as string}</div>`
           : `<p class="desc-text desc-no-desc">このステップの説明はありません。</p>`

@@ -606,6 +606,29 @@ svg text {
   animation: highlightFade 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+@keyframes activeNoteBg {
+  from { fill: #222015; stroke: #5c542a; }
+  to { fill: #2d2912; stroke: #d4af37; }
+}
+@keyframes activeNoteFold {
+  from { fill: #7d7039; }
+  to { fill: #f0c243; }
+}
+@keyframes activeNoteText {
+  from { fill: #d9ce8f; }
+  to { fill: #fef08a; }
+}
+
+.step-note.active path:first-of-type {
+  animation: activeNoteBg 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.step-note.active path:nth-of-type(2) {
+  animation: activeNoteFold 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.step-note.active text {
+  animation: activeNoteText 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 .step-group .step-click-rect {
   transition: fill 0.2s ease;
 }

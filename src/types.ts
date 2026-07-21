@@ -7,13 +7,21 @@ export interface Participant {
   icon?: IconType
 }
 
+export interface NoteDef {
+  text: string
+  actor: string
+  toActor?: string
+  align?: 'over' | 'left' | 'right'
+}
+
 export interface Step {
-  from: string
-  to: string
-  arrow: ArrowType
-  label: string
+  from?: string
+  to?: string
+  arrow?: ArrowType
+  label?: string
   title?: string
   description?: string
+  note?: NoteDef
 }
 
 export interface SequenceDef {

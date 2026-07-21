@@ -139,76 +139,154 @@ export function renderSVG(seq: SequenceDef, opts: RenderOptions): string {
   // ── steps ─────────────────────────────────────────────────────
   const stepsG = seq.steps.map((step, idx) => {
     const active = idx === currentStep
-    const style = arrowStyle(step.arrow)
-    const fromIdx = seq.participants.findIndex((p) => p.id === step.from)
-    const toIdx = seq.participants.findIndex((p) => p.id === step.to)
+    const fromIdx = step.from !== undefined ? seq.participants.findIndex((p) => p.id === step.from) : -1
+    const toIdx = step.to !== undefined ? seq.participants.findIndex((p) => p.id === step.to) : -1
     const y = firstStepY + idx * STEP_GAP
-    const isSelf = fromIdx === toIdx
+    const hasArrow = fromIdx !== -1 && toIdx !== -1
+    const isSelf = hasArrow && fromIdx === toIdx
     const lineColor = active ? COLOR_ACTIVE : COLOR_INACTIVE_LINE
     const textColor = active ? COLOR_ACTIVE_DIM : COLOR_INACTIVE_TEXT
-    const dash = style.dashed ? 'stroke-dasharray="6 3"' : ''
-    const mId = markerId(active, style.head)
     const numStr = String(idx + 1)
     const badgeW = numStr.length * 6 + 12
     const badgeH = 16
     const badgeBg = active ? COLOR_ACTIVE : '#262626'
     const badgeStroke = active ? COLOR_ACTIVE_DIM : '#404040'
     const badgeTextColor = active ? '#ffffff' : '#a3a3a3'
-    const msgEscaped = escXML(step.label)
 
     let elementMarkup = ''
 
-    if (isSelf) {
-      const cx = pX(fromIdx)
-      const x1 = cx
-      const x2 = cx + SELF_LOOP_W
-      const y1 = y - SELF_LOOP_H / 2
-      const y2 = y + SELF_LOOP_H / 2
-      const bx = x2 + 8
-      const by = y - 16
+    if (hasArrow) {
+      const style = arrowStyle(step.arrow ?? '->>')
+      const dash = style.dashed ? 'stroke-dasharray="6 3"' : ''
+      const mId = markerId(active, style.head)
+      const msgEscaped = escXML(step.label ?? '')
 
-      elementMarkup = `
-        <path class="step-line ${active ? 'active' : ''}" d="M${x1},${y1} H${x2} V${y2} H${x1}"
-          fill="none" stroke="${lineColor}" stroke-width="1.5" ${dash}
-          marker-end="url(#${mId})"/>
-        <!-- Badge -->
-        <rect class="step-badge-bg ${active ? 'active' : ''}" x="${bx}" y="${by}" width="${badgeW}" height="${badgeH}" rx="4"
-          fill="${badgeBg}" stroke="${badgeStroke}" stroke-width="1"/>
-        <text class="step-badge-text ${active ? 'active' : ''}" x="${bx + badgeW / 2}" y="${by + badgeH / 2}"
-          text-anchor="middle" dominant-baseline="central"
-          font-family="Inter, sans-serif" font-size="9" font-weight="600"
-          fill="${badgeTextColor}">${numStr}</text>
-        <!-- Message -->
-        <text class="step-text ${active ? 'active' : ''}" x="${bx}" y="${y + 8}"
-          dominant-baseline="central" text-anchor="start"
-          font-family="Inter, sans-serif" font-size="11" fill="${textColor}">${msgEscaped}</text>
-      `
-    } else {
-      const fromX = pX(fromIdx)
-      const toX = pX(toIdx)
-      const goRight = toX > fromX
-      const x1 = fromX
-      const x2 = goRight ? toX - 2 : toX + 2
-      const midX = (fromX + toX) / 2
-      const bx = midX - badgeW / 2
-      const by = y - 40
+      if (isSelf) {
+        const cx = pX(fromIdx)
+        const x1 = cx
+        const x2 = cx + SELF_LOOP_W
+        const y1 = y - SELF_LOOP_H / 2
+        const y2 = y + SELF_LOOP_H / 2
+        const bx = x2 + 8
+        const by = y - 16
 
-      elementMarkup = `
-        <line class="step-line ${active ? 'active' : ''}" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"
-          stroke="${lineColor}" stroke-width="1.5" ${dash}
-          marker-end="url(#${mId})"/>
-        <!-- Badge -->
-        <rect class="step-badge-bg ${active ? 'active' : ''}" x="${bx}" y="${by}" width="${badgeW}" height="${badgeH}" rx="4"
-          fill="${badgeBg}" stroke="${badgeStroke}" stroke-width="1"/>
-        <text class="step-badge-text ${active ? 'active' : ''}" x="${midX}" y="${by + badgeH / 2}"
-          text-anchor="middle" dominant-baseline="central"
-          font-family="Inter, sans-serif" font-size="9" font-weight="600"
-          fill="${badgeTextColor}">${numStr}</text>
-        <!-- Message -->
-        <text class="step-text ${active ? 'active' : ''}" x="${midX}" y="${y - 8}"
-          text-anchor="middle"
-          font-family="Inter, sans-serif" font-size="11" fill="${textColor}">${msgEscaped}</text>
-      `
+        elementMarkup = `
+          <path class="step-line ${active ? 'active' : ''}" d="M${x1},${y1} H${x2} V${y2} H${x1}"
+            fill="none" stroke="${lineColor}" stroke-width="1.5" ${dash}
+            marker-end="url(#${mId})"/>
+          <!-- Badge -->
+          <rect class="step-badge-bg ${active ? 'active' : ''}" x="${bx}" y="${by}" width="${badgeW}" height="${badgeH}" rx="4"
+            fill="${badgeBg}" stroke="${badgeStroke}" stroke-width="1"/>
+          <text class="step-badge-text ${active ? 'active' : ''}" x="${bx + badgeW / 2}" y="${by + badgeH / 2}"
+            text-anchor="middle" dominant-baseline="central"
+            font-family="Inter, sans-serif" font-size="9" font-weight="600"
+            fill="${badgeTextColor}">${numStr}</text>
+          <!-- Message -->
+          <text class="step-text ${active ? 'active' : ''}" x="${bx}" y="${y + 8}"
+            dominant-baseline="central" text-anchor="start"
+            font-family="Inter, sans-serif" font-size="11" fill="${textColor}">${msgEscaped}</text>
+        `
+      } else {
+        const fromX = pX(fromIdx)
+        const toX = pX(toIdx)
+        const goRight = toX > fromX
+        const x1 = fromX
+        const x2 = goRight ? toX - 2 : toX + 2
+        const midX = (fromX + toX) / 2
+        const bx = midX - badgeW / 2
+        const by = y - 40
+
+        elementMarkup = `
+          <line class="step-line ${active ? 'active' : ''}" x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"
+            stroke="${lineColor}" stroke-width="1.5" ${dash}
+            marker-end="url(#${mId})"/>
+          <!-- Badge -->
+          <rect class="step-badge-bg ${active ? 'active' : ''}" x="${bx}" y="${by}" width="${badgeW}" height="${badgeH}" rx="4"
+            fill="${badgeBg}" stroke="${badgeStroke}" stroke-width="1"/>
+          <text class="step-badge-text ${active ? 'active' : ''}" x="${midX}" y="${by + badgeH / 2}"
+            text-anchor="middle" dominant-baseline="central"
+            font-family="Inter, sans-serif" font-size="9" font-weight="600"
+            fill="${badgeTextColor}">${numStr}</text>
+          <!-- Message -->
+          <text class="step-text ${active ? 'active' : ''}" x="${midX}" y="${y - 8}"
+            text-anchor="middle"
+            font-family="Inter, sans-serif" font-size="11" fill="${textColor}">${msgEscaped}</text>
+        `
+      }
+    }
+
+    let noteMarkup = ''
+    if (step.note) {
+      const n = step.note
+      const actorIdx = seq.participants.findIndex((p) => p.id === n.actor)
+      if (actorIdx !== -1) {
+        const cx = pX(actorIdx)
+        const lines = n.text.split('\n')
+        const maxLen = Math.max(...lines.map(l => l.length))
+        const boxW = Math.max(120, maxLen * 7.5 + 24)
+        const boxH = lines.length * 15 + 16
+        
+        let boxX = 0
+        const boxY = y - boxH / 2
+        let textAnchor = 'middle'
+        let textX = 0
+        
+        if (n.align === 'left') {
+          boxX = cx - boxW - 16
+          textAnchor = 'start'
+          textX = boxX + 12
+        } else if (n.align === 'right') {
+          boxX = cx + 16
+          textAnchor = 'start'
+          textX = boxX + 12
+        } else if (n.toActor) {
+          const toActorIdx = seq.participants.findIndex((p) => p.id === n.toActor)
+          if (toActorIdx !== -1) {
+            const cx2 = pX(toActorIdx)
+            const midX = (cx + cx2) / 2
+            boxX = midX - boxW / 2
+            textX = midX
+            textAnchor = 'middle'
+          } else {
+            boxX = cx - boxW / 2
+            textX = cx
+            textAnchor = 'middle'
+          }
+        } else {
+          boxX = cx - boxW / 2
+          textX = cx
+          textAnchor = 'middle'
+        }
+        
+        const w = boxW
+        const h = boxH
+        const x = boxX
+        const yy = boxY
+        
+        const noteBg = active ? '#2d2912' : '#222015'
+        const noteStroke = active ? '#d4af37' : '#5c542a'
+        const noteFold = active ? '#f0c243' : '#7d7039'
+        const noteTextColor = active ? '#fef08a' : '#d9ce8f'
+        
+        let textLinesMarkup = ''
+        lines.forEach((line, lineIdx) => {
+          const lineY = yy + 13 + lineIdx * 15
+          const lineEsc = escXML(line)
+          textLinesMarkup += `
+            <text x="${textX}" y="${lineY}" text-anchor="${textAnchor}" dominant-baseline="central"
+              font-family="Inter, sans-serif" font-size="10.5" fill="${noteTextColor}">${lineEsc}</text>
+          `
+        })
+        
+        noteMarkup = `
+          <!-- Note Box -->
+          <g class="step-note ${active ? 'active' : ''}">
+            <path d="M ${x},${yy} H ${x + w - 6} L ${x + w},${yy + 6} V ${yy + h} H ${x} Z" fill="${noteBg}" stroke="${noteStroke}" stroke-width="1"/>
+            <path d="M ${x + w - 6},${yy} V ${yy + 6} H ${x + w} Z" fill="${noteFold}"/>
+            ${textLinesMarkup}
+          </g>
+        `
+      }
     }
 
     return `
@@ -216,9 +294,11 @@ export function renderSVG(seq: SequenceDef, opts: RenderOptions): string {
         <!-- Click target and hover highlight -->
         <rect class="step-click-rect" x="0" y="${y - 42}" width="${width}" height="62" fill="transparent" pointer-events="all"/>
         ${elementMarkup}
+        ${noteMarkup}
       </g>
     `
   }).join('')
+
 
   // ── active highlight bar ──────────────────────────────────────
   let highlightG = ''
