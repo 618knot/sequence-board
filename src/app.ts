@@ -139,6 +139,8 @@ export interface AppState {
   currentStep: number  // -1 = before any step
   activeTab: 'description' | 'editor'
   autoPlaying: boolean
+  compareMode: boolean
+  compareSeqIndex: number  // second sequence index for compare
 }
 
 export class App {
@@ -150,6 +152,8 @@ export class App {
     currentStep: -1,
     activeTab: 'description',
     autoPlaying: false,
+    compareMode: false,
+    compareSeqIndex: 1,
   }
 
   private autoTimer: ReturnType<typeof setInterval> | null = null
@@ -171,6 +175,8 @@ export class App {
   private playBtnEl!: HTMLButtonElement
   private tabDescEl!: HTMLElement
   private tabEditorEl!: HTMLElement
+  private compareBtnEl!: HTMLButtonElement
+  private prevStepB = -1
 
   mount(root: HTMLElement): void {
     root.innerHTML = this.buildHTML()
@@ -191,6 +197,10 @@ export class App {
     </div>
     <div class="header-right">
       <span class="header-step-counter" id="step-counter"></span>
+      <button class="btn btn-ghost" id="btn-compare" title="フローを比較">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="8" height="18" rx="1"/><rect x="14" y="3" width="8" height="18" rx="1"/></svg>
+        Compare
+      </button>
       <label class="btn btn-ghost" id="btn-open-yaml" title="YAMLファイルを開く">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
         Open YAML
@@ -208,11 +218,27 @@ export class App {
 
   <!-- Body -->
   <div class="app-body">
-    <!-- Left: SVG diagram -->
+    <!-- Left: SVG diagram(s) -->
     <div class="diagram-panel" id="diagram-panel">
       <div class="diagram-tabs-row hidden" id="diagram-tabs"></div>
       <div class="diagram-scroll" id="diagram-scroll">
         <div id="diagram-svg-container"></div>
+      </div>
+      <!-- Compare mode: side-by-side -->
+      <div class="compare-container hidden" id="compare-container">
+        <div class="compare-pane compare-pane-a">
+          <div class="compare-pane-header" id="compare-header-a"></div>
+          <div class="compare-scroll" id="compare-scroll-a">
+            <div id="compare-svg-a"></div>
+          </div>
+        </div>
+        <div class="compare-divider"></div>
+        <div class="compare-pane compare-pane-b">
+          <div class="compare-pane-header" id="compare-header-b"></div>
+          <div class="compare-scroll" id="compare-scroll-b">
+            <div id="compare-svg-b"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -293,6 +319,7 @@ export class App {
     this.rightPanelEl = root.querySelector('#right-panel')!
     this.diagramTabsEl = root.querySelector('#diagram-tabs')!
     this.yamlHighlightEl = root.querySelector('#yaml-highlight')!
+    this.compareBtnEl = root.querySelector('#btn-compare')!
   }
 
   private bindEvents(): void {
@@ -301,6 +328,9 @@ export class App {
     this.playBtnEl.addEventListener('click', () => this.toggleAutoPlay())
     this.tabDescEl.addEventListener('click', () => this.switchTab('description'))
     this.tabEditorEl.addEventListener('click', () => this.switchTab('editor'))
+
+    // Compare toggle
+    this.compareBtnEl.addEventListener('click', () => this.toggleCompareMode())
 
     // File open
     const fileInput = document.querySelector<HTMLInputElement>('#file-input')!
@@ -352,6 +382,47 @@ export class App {
       if (e.key === 'ArrowRight' || e.key === 'l') this.navigate(1)
       if (e.key === 'ArrowLeft' || e.key === 'h') this.navigate(-1)
       if (e.key === ' ') { e.preventDefault(); this.toggleAutoPlay() }
+    })
+
+    // Click on compare diagram elements
+    document.querySelector('#compare-svg-a')!.addEventListener('click', (e) => {
+      const stepGroup = (e.target as Element).closest('.step-group')
+      if (stepGroup) {
+        const stepIdx = stepGroup.getAttribute('data-step-idx')
+        if (stepIdx !== null) {
+          this.state.currentStep = Number(stepIdx)
+          this.stopAutoPlay()
+          this.renderAll()
+        }
+      }
+    })
+    document.querySelector('#compare-svg-b')!.addEventListener('click', (e) => {
+      const stepGroup = (e.target as Element).closest('.step-group')
+      if (stepGroup) {
+        const stepIdx = stepGroup.getAttribute('data-step-idx')
+        if (stepIdx !== null) {
+          this.state.currentStep = Number(stepIdx)
+          this.stopAutoPlay()
+          this.renderAll()
+        }
+      }
+    })
+
+    // Sync scroll between compare panes
+    const scrollA = document.querySelector('#compare-scroll-a') as HTMLElement
+    const scrollB = document.querySelector('#compare-scroll-b') as HTMLElement
+    let syncingScroll = false
+    scrollA.addEventListener('scroll', () => {
+      if (syncingScroll) return
+      syncingScroll = true
+      scrollB.scrollTop = scrollA.scrollTop
+      syncingScroll = false
+    })
+    scrollB.addEventListener('scroll', () => {
+      if (syncingScroll) return
+      syncingScroll = true
+      scrollA.scrollTop = scrollB.scrollTop
+      syncingScroll = false
     })
 
     // Click on diagram elements
@@ -423,10 +494,15 @@ export class App {
 
   private navigate(delta: number): void {
     const seq = this.state.seqs[this.state.currentSeqIndex]
-    const { currentStep } = this.state
+    const { currentStep, compareMode, compareSeqIndex } = this.state
     if (!seq) return
+    let maxSteps = seq.steps.length
+    if (compareMode) {
+      const seqB = this.state.seqs[compareSeqIndex]
+      if (seqB) maxSteps = Math.max(maxSteps, seqB.steps.length)
+    }
     const next = currentStep + delta
-    if (next < -1 || next >= seq.steps.length) return
+    if (next < -1 || next >= maxSteps) return
     this.state.currentStep = next
     this.renderAll()
   }
@@ -445,8 +521,13 @@ export class App {
     this.state.autoPlaying = true
     this.updatePlayButton()
 
+    const seqB = this.state.compareMode ? this.state.seqs[this.state.compareSeqIndex] : null
+    const maxSteps = this.state.compareMode
+      ? Math.max(seq.steps.length, seqB?.steps.length ?? 0)
+      : seq.steps.length
+
     this.autoTimer = setInterval(() => {
-      if (this.state.currentStep >= (seq?.steps.length ?? 0) - 1) {
+      if (this.state.currentStep >= maxSteps - 1) {
         this.stopAutoPlay()
         return
       }
@@ -494,9 +575,40 @@ export class App {
       this.tabEditorEl.classList.add('tab-active')
     }
   }
+  private toggleCompareMode(): void {
+    if (this.state.seqs.length < 2) return
+    this.state.compareMode = !this.state.compareMode
+    this.state.currentStep = -1
+    this.prevStep = -1
+    this.prevStepB = -1
+    this.stopAutoPlay()
+
+    const normalScroll = document.querySelector('#diagram-scroll') as HTMLElement
+    const compareCtn = document.querySelector('#compare-container') as HTMLElement
+
+    if (this.state.compareMode) {
+      this.compareBtnEl.classList.add('btn-active')
+      normalScroll.classList.add('hidden')
+      compareCtn.classList.remove('hidden')
+      // Default: first two sequences
+      if (this.state.currentSeqIndex === this.state.compareSeqIndex) {
+        this.state.compareSeqIndex = this.state.currentSeqIndex === 0 ? 1 : 0
+      }
+    } else {
+      this.compareBtnEl.classList.remove('btn-active')
+      normalScroll.classList.remove('hidden')
+      compareCtn.classList.add('hidden')
+    }
+    this.renderAll()
+  }
+
   private renderAll(): void {
     this.renderDiagramTabs()
-    this.renderDiagram()
+    if (this.state.compareMode) {
+      this.renderCompareDiagrams()
+    } else {
+      this.renderDiagram()
+    }
     this.renderHeader()
     this.renderNavbar()
     this.renderDescription()
@@ -538,21 +650,93 @@ export class App {
     this.prevStep = currentStep
   }
 
+  private renderCompareDiagrams(): void {
+    const seqA = this.state.seqs[this.state.currentSeqIndex]
+    const seqB = this.state.seqs[this.state.compareSeqIndex]
+    const { currentStep } = this.state
+
+    const svgA = document.querySelector('#compare-svg-a') as HTMLElement
+    const svgB = document.querySelector('#compare-svg-b') as HTMLElement
+    const headerA = document.querySelector('#compare-header-a') as HTMLElement
+    const headerB = document.querySelector('#compare-header-b') as HTMLElement
+
+    // Build selectors for A/B pane headers
+    const buildSelector = (selectedIdx: number, side: 'a' | 'b') => {
+      return this.state.seqs.map((s, i) => {
+        const active = i === selectedIdx
+        return `<button class="compare-select-btn ${active ? 'compare-select-active' : ''}" data-compare-side="${side}" data-compare-idx="${i}">${esc(s.title)}</button>`
+      }).join('')
+    }
+
+    headerA.innerHTML = `<div class="compare-select-row">${buildSelector(this.state.currentSeqIndex, 'a')}</div>`
+    headerB.innerHTML = `<div class="compare-select-row">${buildSelector(this.state.compareSeqIndex, 'b')}</div>`
+
+    // Bind selector click events
+    document.querySelectorAll('[data-compare-side]').forEach(el => {
+      el.addEventListener('click', () => {
+        const side = (el as HTMLElement).dataset.compareSide
+        const idx = Number((el as HTMLElement).dataset.compareIdx)
+        if (side === 'a') {
+          this.state.currentSeqIndex = idx
+        } else {
+          this.state.compareSeqIndex = idx
+        }
+        this.state.currentStep = -1
+        this.prevStep = -1
+        this.prevStepB = -1
+        this.renderAll()
+      })
+    })
+
+    if (seqA) {
+      const wA = svgA.parentElement?.clientWidth ?? 400
+      const stepA = currentStep < seqA.steps.length ? currentStep : -2
+      svgA.innerHTML = renderSVG(seqA, { width: wA, currentStep: stepA, prevStep: this.prevStep })
+    } else {
+      svgA.innerHTML = ''
+    }
+
+    if (seqB) {
+      const wB = svgB.parentElement?.clientWidth ?? 400
+      const stepB = currentStep < seqB.steps.length ? currentStep : -2
+      svgB.innerHTML = renderSVG(seqB, { width: wB, currentStep: stepB, prevStep: this.prevStepB })
+    } else {
+      svgB.innerHTML = ''
+    }
+
+    this.prevStep = currentStep
+    this.prevStepB = currentStep
+  }
+
   private renderHeader(): void {
     const seq = this.state.seqs[this.state.currentSeqIndex]
-    const { currentStep } = this.state
+    const { currentStep, compareMode, compareSeqIndex } = this.state
     if (!seq) { this.titleEl.textContent = '—'; return }
-    this.titleEl.textContent = seq.title
-    const step = currentStep >= 0 ? seq.steps[currentStep] : null
-    this.stepCounterEl.textContent = step
-      ? `Step ${currentStep + 1} / ${seq.steps.length}`
-      : `${seq.steps.length} steps`
+
+    if (compareMode) {
+      const seqB = this.state.seqs[compareSeqIndex]
+      this.titleEl.textContent = `${seq.title}  vs  ${seqB?.title ?? '—'}`
+      const maxSteps = Math.max(seq.steps.length, seqB?.steps.length ?? 0)
+      this.stepCounterEl.textContent = currentStep >= 0
+        ? `Step ${currentStep + 1} / ${maxSteps}`
+        : `${maxSteps} steps (max)`
+    } else {
+      this.titleEl.textContent = seq.title
+      const step = currentStep >= 0 ? seq.steps[currentStep] : null
+      this.stepCounterEl.textContent = step
+        ? `Step ${currentStep + 1} / ${seq.steps.length}`
+        : `${seq.steps.length} steps`
+    }
+
+    // Update compare button visibility
+    this.compareBtnEl.style.display = this.state.seqs.length >= 2 ? '' : 'none'
   }
 
   private renderNavbar(): void {
     const seq = this.state.seqs[this.state.currentSeqIndex]
-    const { currentStep } = this.state
-    const total = seq?.steps.length ?? 0
+    const { currentStep, compareMode, compareSeqIndex } = this.state
+    const seqB = compareMode ? this.state.seqs[compareSeqIndex] : null
+    const total = compareMode ? Math.max(seq?.steps.length ?? 0, seqB?.steps.length ?? 0) : (seq?.steps.length ?? 0)
 
     // Dots
     this.stepDotsEl.innerHTML = Array.from({ length: total }, (_, i) => {
@@ -585,12 +769,17 @@ export class App {
   }
 
   private renderDescription(): void {
+    const { currentStep, compareMode } = this.state
     const seq = this.state.seqs[this.state.currentSeqIndex]
-    const { currentStep } = this.state
     const descEl = this.descPanelEl.querySelector('#desc-content')!
 
     if (!seq) {
       descEl.innerHTML = '<p class="desc-placeholder">YAMLを読み込んでください</p>'
+      return
+    }
+
+    if (compareMode) {
+      this.renderCompareDescription()
       return
     }
 
@@ -660,6 +849,81 @@ export class App {
           ? `<div class="desc-text prose">${marked.parse(step.description) as string}</div>`
           : `<p class="desc-text desc-no-desc">このステップの説明はありません。</p>`
         }
+      </div>
+    `
+  }
+
+  private renderCompareDescription(): void {
+    const descEl = this.descPanelEl.querySelector('#desc-content')!
+    const seqA = this.state.seqs[this.state.currentSeqIndex]
+    const seqB = this.state.seqs[this.state.compareSeqIndex]
+    const { currentStep } = this.state
+
+    if (currentStep < 0) {
+      descEl.innerHTML = `
+        <div class="desc-animate">
+          <div class="compare-desc-intro">
+            <div class="desc-start-icon">⇔</div>
+            <p class="desc-start-title">フロー比較モード</p>
+            <div class="compare-desc-titles">
+              <div class="compare-desc-title-item">
+                <span class="compare-label-a">A</span>
+                <span>${esc(seqA?.title ?? '—')}</span>
+              </div>
+              <div class="compare-desc-title-item">
+                <span class="compare-label-b">B</span>
+                <span>${esc(seqB?.title ?? '—')}</span>
+              </div>
+            </div>
+            <p class="desc-start-hint">「Next」で比較を開始</p>
+          </div>
+        </div>
+      `
+      return
+    }
+
+    const stepA = seqA && currentStep < seqA.steps.length ? seqA.steps[currentStep] : null
+    const stepB = seqB && currentStep < seqB.steps.length ? seqB.steps[currentStep] : null
+
+    const renderSide = (step: typeof stepA, seq: SequenceDef | undefined, label: string, colorClass: string) => {
+      if (!step || !seq) {
+        return `<div class="compare-desc-side ${colorClass}">
+          <div class="compare-desc-side-label">${label}</div>
+          <p class="desc-text desc-no-desc" style="font-style: italic; opacity: 0.5;">— このステップはありません —</p>
+        </div>`
+      }
+      const hasArrow = step.from !== undefined && step.to !== undefined
+      let arrowInfo = ''
+      if (hasArrow) {
+        const fromP = seq.participants.find(p => p.id === step.from)
+        const toP = seq.participants.find(p => p.id === step.to)
+        arrowInfo = `<div class="compare-desc-arrow">${esc(fromP?.label ?? step.from ?? '')} → ${esc(toP?.label ?? step.to ?? '')}</div>`
+      } else if (step.note) {
+        const actorP = seq.participants.find(p => p.id === step.note!.actor)
+        arrowInfo = `<div class="compare-desc-arrow"><span style="color: #fef08a;">Note</span> ${esc(actorP?.label ?? step.note.actor)}</div>`
+      }
+      const importantBadge = step.important ? '<span class="desc-important-badge" style="background: #ea580c20; color: #ff9b50; border: 1px solid #ea580c40; padding: 2px 4px; border-radius: 3px; font-size: 9px; font-weight: bold; margin-left: 4px;">★</span>' : ''
+      const desc = step.description
+        ? `<div class="desc-text prose" style="font-size: 12px;">${marked.parse(step.description) as string}</div>`
+        : '<p class="desc-text desc-no-desc" style="font-size: 12px;">説明なし</p>'
+      return `<div class="compare-desc-side ${colorClass}">
+        <div class="compare-desc-side-label">${label}</div>
+        <div class="compare-desc-side-title">${esc(step.title ?? step.label ?? '')}${importantBadge}</div>
+        ${arrowInfo}
+        <div class="compare-desc-divider"></div>
+        ${desc}
+      </div>`
+    }
+
+    descEl.innerHTML = `
+      <div class="desc-animate">
+        <div class="desc-step-header">
+          <span class="desc-step-badge">Step ${currentStep + 1}</span>
+        </div>
+        <div class="compare-desc-grid">
+          ${renderSide(stepA, seqA, 'A', 'compare-side-a')}
+          ${renderSide(stepB, seqB, 'B', 'compare-side-b')}
+        </div>
       </div>
     `
   }
