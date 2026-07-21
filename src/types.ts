@@ -22,6 +22,7 @@ export interface Step {
   title?: string
   description?: string
   note?: NoteDef
+  important?: boolean
 }
 
 export interface SequenceDef {

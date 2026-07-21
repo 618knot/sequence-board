@@ -52,6 +52,7 @@ steps:
       actor: api
       align: over
     title: "パスワード検証"
+    important: true
     description: |
       DBから取得したハッシュ化パスワードと入力されたパスワードを照合します。
 
@@ -108,6 +109,7 @@ steps:
     arrow: "->>"
     label: "Charge request"
     title: "課金要求"
+    important: true
     description: "決済サービスへ課金リクエストを送ります。"
   - from: payment
     to: api
@@ -556,7 +558,8 @@ export class App {
     this.stepDotsEl.innerHTML = Array.from({ length: total }, (_, i) => {
       const active = i === currentStep
       const visited = i < currentStep
-      const cls = active ? 'dot dot-active' : visited ? 'dot dot-visited' : 'dot dot-idle'
+      const important = seq.steps[i]?.important ? 'dot-important' : ''
+      const cls = `${active ? 'dot dot-active' : visited ? 'dot dot-visited' : 'dot dot-idle'} ${important}`
       return `<button class="${cls}" data-step="${i}" title="Step ${i + 1}"></button>`
     }).join('')
 
@@ -641,11 +644,16 @@ export class App {
       `;
     }
 
+    const importantBadge = step.important
+      ? `<span class="desc-important-badge" style="background: #ea580c20; color: #ff9b50; border: 1px solid #ea580c40; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px; display: inline-flex; align-items: center; gap: 3px;">★</span>`
+      : ''
+
     descEl.innerHTML = `
       <div class="desc-animate">
-        <div class="desc-step-header">
+        <div class="desc-step-header" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
           <span class="desc-step-badge">Step ${currentStep + 1}</span>
           <span class="desc-step-title">${esc(step.title ?? step.label ?? '')}</span>
+          ${importantBadge}
         </div>
         ${arrowRow}
         ${step.description

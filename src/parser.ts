@@ -108,6 +108,7 @@ function validateAndParseSingle(raw: unknown): SequenceDef {
       title,
       description: s.description != null ? String(s.description) : undefined,
       note,
+      important: s.important === true,
     }
   })
 

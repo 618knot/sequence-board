@@ -146,12 +146,12 @@ export function renderSVG(seq: SequenceDef, opts: RenderOptions): string {
     const isSelf = hasArrow && fromIdx === toIdx
     const lineColor = active ? COLOR_ACTIVE : COLOR_INACTIVE_LINE
     const textColor = active ? COLOR_ACTIVE_DIM : COLOR_INACTIVE_TEXT
-    const numStr = String(idx + 1)
-    const badgeW = numStr.length * 6 + 12
+    const numStr = (step.important ? '★ ' : '') + String(idx + 1)
+    const badgeW = numStr.length * 6 + (step.important ? 14 : 12)
     const badgeH = 16
-    const badgeBg = active ? COLOR_ACTIVE : '#262626'
-    const badgeStroke = active ? COLOR_ACTIVE_DIM : '#404040'
-    const badgeTextColor = active ? '#ffffff' : '#a3a3a3'
+    const badgeBg = active ? (step.important ? '#ea580c' : COLOR_ACTIVE) : (step.important ? '#2d1910' : '#262626')
+    const badgeStroke = active ? (step.important ? '#fdba74' : COLOR_ACTIVE_DIM) : (step.important ? '#c2410c' : '#404040')
+    const badgeTextColor = active ? '#ffffff' : (step.important ? '#f97316' : '#a3a3a3')
 
     let elementMarkup = ''
 
@@ -175,9 +175,9 @@ export function renderSVG(seq: SequenceDef, opts: RenderOptions): string {
             fill="none" stroke="${lineColor}" stroke-width="1.5" ${dash}
             marker-end="url(#${mId})"/>
           <!-- Badge -->
-          <rect class="step-badge-bg ${active ? 'active' : ''}" x="${bx}" y="${by}" width="${badgeW}" height="${badgeH}" rx="4"
+          <rect class="step-badge-bg ${active ? 'active' : ''} ${step.important ? 'important' : ''}" x="${bx}" y="${by}" width="${badgeW}" height="${badgeH}" rx="4"
             fill="${badgeBg}" stroke="${badgeStroke}" stroke-width="1"/>
-          <text class="step-badge-text ${active ? 'active' : ''}" x="${bx + badgeW / 2}" y="${by + badgeH / 2}"
+          <text class="step-badge-text ${active ? 'active' : ''} ${step.important ? 'important' : ''}" x="${bx + badgeW / 2}" y="${by + badgeH / 2}"
             text-anchor="middle" dominant-baseline="central"
             font-family="Inter, sans-serif" font-size="9" font-weight="600"
             fill="${badgeTextColor}">${numStr}</text>
@@ -201,9 +201,9 @@ export function renderSVG(seq: SequenceDef, opts: RenderOptions): string {
             stroke="${lineColor}" stroke-width="1.5" ${dash}
             marker-end="url(#${mId})"/>
           <!-- Badge -->
-          <rect class="step-badge-bg ${active ? 'active' : ''}" x="${bx}" y="${by}" width="${badgeW}" height="${badgeH}" rx="4"
+          <rect class="step-badge-bg ${active ? 'active' : ''} ${step.important ? 'important' : ''}" x="${bx}" y="${by}" width="${badgeW}" height="${badgeH}" rx="4"
             fill="${badgeBg}" stroke="${badgeStroke}" stroke-width="1"/>
-          <text class="step-badge-text ${active ? 'active' : ''}" x="${midX}" y="${by + badgeH / 2}"
+          <text class="step-badge-text ${active ? 'active' : ''} ${step.important ? 'important' : ''}" x="${midX}" y="${by + badgeH / 2}"
             text-anchor="middle" dominant-baseline="central"
             font-family="Inter, sans-serif" font-size="9" font-weight="600"
             fill="${badgeTextColor}">${numStr}</text>

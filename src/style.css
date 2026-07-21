@@ -452,6 +452,22 @@ html, body {
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
 }
 
+.dot-important {
+  background-color: rgba(234, 88, 12, 0.3) !important;
+  border: 1px solid rgba(234, 88, 12, 0.5);
+}
+
+.dot-important.dot-visited {
+  background-color: rgba(234, 88, 12, 0.5) !important;
+}
+
+.dot-important.dot-active {
+  background-color: #ea580c !important;
+  transform: scale(1.3);
+  box-shadow: 0 0 8px rgba(234, 88, 12, 0.8) !important;
+  border-color: #fdba74;
+}
+
 .step-label {
   font-size: 13px;
   color: #737373;
@@ -627,6 +643,22 @@ svg text {
 }
 .step-note.active text {
   animation: activeNoteText 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes activeImportantBadgeBg {
+  from { fill: #2d1910; stroke: #c2410c; }
+  to { fill: #ea580c; stroke: #fdba74; }
+}
+@keyframes activeImportantBadgeText {
+  from { fill: #f97316; }
+  to { fill: #ffffff; }
+}
+
+.step-badge-bg.important.active {
+  animation: activeImportantBadgeBg 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.step-badge-text.important.active {
+  animation: activeImportantBadgeText 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .step-group .step-click-rect {
