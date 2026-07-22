@@ -351,6 +351,50 @@ export class App {
       this.switchTab(this.state.activeTab === 'editor' ? 'description' : 'editor')
     })
 
+    // YAML editor – keyboard enhancements
+    this.yamlTextareaEl.addEventListener('keydown', (e) => {
+      if (e.isComposing || e.keyCode === 229) return  // IME入力中はスキップ
+      const ta = this.yamlTextareaEl
+      const start = ta.selectionStart
+      const end = ta.selectionEnd
+      const val = ta.value
+
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        if (e.shiftKey) {
+          // Shift+Tab: dedent selected lines
+          const lineStart = val.lastIndexOf('\n', start - 1) + 1
+          const lineEnd = end
+          const block = val.substring(lineStart, lineEnd)
+          const dedented = block.replace(/^( {1,2})/gm, '')
+          const removed = block.length - dedented.length
+          ta.value = val.substring(0, lineStart) + dedented + val.substring(lineEnd)
+          ta.selectionStart = Math.max(lineStart, start - (block.substring(0, start - lineStart).length - block.substring(0, start - lineStart).replace(/^( {1,2})/, '').length))
+          ta.selectionEnd = end - removed
+        } else {
+          // Tab: insert 2 spaces
+          ta.value = val.substring(0, start) + '  ' + val.substring(end)
+          ta.selectionStart = ta.selectionEnd = start + 2
+        }
+        ta.dispatchEvent(new Event('input'))
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        // Get indentation of the current line
+        const lineStart = val.lastIndexOf('\n', start - 1) + 1
+        const line = val.substring(lineStart, start)
+        const indent = line.match(/^(\s*)/)?.[1] ?? ''
+        // If line ends with ':', add extra 2 spaces
+        const trimmed = line.trimEnd()
+        const extra = trimmed.endsWith(':') ? '  ' : ''
+        const insert = '\n' + indent + extra
+        ta.value = val.substring(0, start) + insert + val.substring(end)
+        ta.selectionStart = ta.selectionEnd = start + insert.length
+        ta.dispatchEvent(new Event('input'))
+      }
+    })
+
     // YAML editor – debounced
     let debounce: ReturnType<typeof setTimeout>
     this.yamlTextareaEl.addEventListener('input', () => {
