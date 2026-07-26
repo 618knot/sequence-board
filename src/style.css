@@ -979,3 +979,120 @@ svg text {
   margin: 6px 0;
 }
 
+
+/* ══════════════ Panel Collapse ══════════════ */
+.right-panel {
+  transition: width 0.25s ease, min-width 0.25s ease, opacity 0.2s ease;
+}
+
+.right-panel.collapsed {
+  width: 0 !important;
+  min-width: 0 !important;
+  overflow: hidden;
+  opacity: 0;
+  border-left: none;
+  pointer-events: none;
+}
+
+.resizer {
+  position: relative;
+}
+
+.collapse-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 40px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  z-index: 10;
+  padding: 0;
+}
+
+.collapse-btn:hover {
+  background: #262626;
+  color: #ccc;
+  border-color: #555;
+}
+
+.resizer.collapsed {
+  width: 0;
+  min-width: 0;
+  border: none;
+}
+
+.resizer.collapsed .collapse-btn {
+  left: -10px;
+  background: var(--color-accent-blue);
+  border-color: var(--color-accent-blue);
+  color: #fff;
+}
+
+/* ══════════════ Note-only dots ══════════════ */
+.dot-note-only {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 2px !important;
+  opacity: 0.6;
+}
+
+.dot-note-only.dot-active {
+  opacity: 1;
+  transform: scale(1.4);
+}
+
+/* ══════════════ Highlight dot colors ══════════════ */
+.dot-hl-red { background-color: rgba(239, 68, 68, 0.3) !important; border: 1px solid rgba(239, 68, 68, 0.5); }
+.dot-hl-red.dot-active { background-color: #ef4444 !important; box-shadow: 0 0 8px rgba(239, 68, 68, 0.8) !important; }
+.dot-hl-red.dot-visited { background-color: rgba(239, 68, 68, 0.5) !important; }
+
+.dot-hl-green { background-color: rgba(34, 197, 94, 0.3) !important; border: 1px solid rgba(34, 197, 94, 0.5); }
+.dot-hl-green.dot-active { background-color: #22c55e !important; box-shadow: 0 0 8px rgba(34, 197, 94, 0.8) !important; }
+.dot-hl-green.dot-visited { background-color: rgba(34, 197, 94, 0.5) !important; }
+
+.dot-hl-yellow { background-color: rgba(234, 179, 8, 0.3) !important; border: 1px solid rgba(234, 179, 8, 0.5); }
+.dot-hl-yellow.dot-active { background-color: #eab308 !important; box-shadow: 0 0 8px rgba(234, 179, 8, 0.8) !important; }
+.dot-hl-yellow.dot-visited { background-color: rgba(234, 179, 8, 0.5) !important; }
+
+.dot-hl-purple { background-color: rgba(168, 85, 247, 0.3) !important; border: 1px solid rgba(168, 85, 247, 0.5); }
+.dot-hl-purple.dot-active { background-color: #a855f7 !important; box-shadow: 0 0 8px rgba(168, 85, 247, 0.8) !important; }
+.dot-hl-purple.dot-visited { background-color: rgba(168, 85, 247, 0.5) !important; }
+
+.dot-hl-cyan { background-color: rgba(6, 182, 212, 0.3) !important; border: 1px solid rgba(6, 182, 212, 0.5); }
+.dot-hl-cyan.dot-active { background-color: #06b6d4 !important; box-shadow: 0 0 8px rgba(6, 182, 212, 0.8) !important; }
+.dot-hl-cyan.dot-visited { background-color: rgba(6, 182, 212, 0.5) !important; }
+
+.dot-hl-pink { background-color: rgba(236, 72, 153, 0.3) !important; border: 1px solid rgba(236, 72, 153, 0.5); }
+.dot-hl-pink.dot-active { background-color: #ec4899 !important; box-shadow: 0 0 8px rgba(236, 72, 153, 0.8) !important; }
+.dot-hl-pink.dot-visited { background-color: rgba(236, 72, 153, 0.5) !important; }
+
+/* ══════════════ Has Description Indicator ══════════════ */
+.dot.dot-has-desc {
+  position: relative;
+}
+
+.dot.dot-has-desc::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #60a5fa;
+  box-shadow: 0 0 4px rgba(96, 165, 250, 0.8);
+}
+
+.dot-important.dot-has-desc::after {
+  background-color: #fb923c;
+  box-shadow: 0 0 4px rgba(251, 146, 60, 0.8);
+}

@@ -1,5 +1,5 @@
 import { parse } from 'yaml'
-import type { ParseResult, SequenceDef, Participant, Step, ArrowType } from './types'
+import type { ParseResult, SequenceDef, Participant, Step, ArrowType, HighlightColor } from './types'
 
 const VALID_ARROWS: ArrowType[] = ['->', '-->', '->>', '-->>', '-x', '--x', '-)', '--)']
 
@@ -109,6 +109,7 @@ function validateAndParseSingle(raw: unknown): SequenceDef {
       description: s.description != null ? String(s.description) : undefined,
       note,
       important: s.important === true,
+      highlight: (typeof s.highlight === 'string' && ['red','green','yellow','purple','cyan','pink'].includes(s.highlight) ? s.highlight : undefined) as HighlightColor | undefined,
     }
   })
 

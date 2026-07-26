@@ -70,6 +70,7 @@ steps:
     arrow: "-->>"
     label: "200 OK + JWT"
     title: "認証成功"
+    highlight: green
     description: |
       APIサーバーがJWTトークンを生成し、レスポンスに含めて返します。
       ブラウザはこのトークンをLocalStorageまたはCookieに保存します。
@@ -243,7 +244,11 @@ export class App {
     </div>
 
     <!-- Resizer -->
-    <div class="resizer" id="panel-resizer"></div>
+    <div class="resizer" id="panel-resizer">
+      <button class="collapse-btn" id="btn-collapse-panel" title="パネルを折りたたむ">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
 
     <!-- Right: tabs panel -->
     <div class="right-panel" id="right-panel">
@@ -434,7 +439,8 @@ export class App {
       if (stepGroup) {
         const stepIdx = stepGroup.getAttribute('data-step-idx')
         if (stepIdx !== null) {
-          this.state.currentStep = Number(stepIdx)
+          const idx = Number(stepIdx)
+          this.state.currentStep = this.state.currentStep === idx ? -1 : idx
           this.stopAutoPlay()
           this.renderAll()
         }
@@ -445,7 +451,8 @@ export class App {
       if (stepGroup) {
         const stepIdx = stepGroup.getAttribute('data-step-idx')
         if (stepIdx !== null) {
-          this.state.currentStep = Number(stepIdx)
+          const idx = Number(stepIdx)
+          this.state.currentStep = this.state.currentStep === idx ? -1 : idx
           this.stopAutoPlay()
           this.renderAll()
         }
@@ -475,7 +482,8 @@ export class App {
       if (stepGroup) {
         const stepIdx = stepGroup.getAttribute('data-step-idx')
         if (stepIdx !== null) {
-          this.state.currentStep = Number(stepIdx)
+          const idx = Number(stepIdx)
+          this.state.currentStep = this.state.currentStep === idx ? -1 : idx
           this.stopAutoPlay()
           this.renderAll()
         }
@@ -507,6 +515,20 @@ export class App {
       isResizing = false
       document.body.style.cursor = ''
       resizer.classList.remove('resizing')
+    })
+
+    // Collapse panel toggle
+    document.querySelector('#btn-collapse-panel')!.addEventListener('click', () => {
+      const rp = this.rightPanelEl
+      const resizer = document.querySelector('#panel-resizer') as HTMLElement
+      const collapseBtn = document.querySelector('#btn-collapse-panel') as HTMLElement
+      const isCollapsed = rp.classList.toggle('collapsed')
+      resizer.classList.toggle('collapsed', isCollapsed)
+      collapseBtn.innerHTML = isCollapsed
+        ? '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
+        : '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
+      // Re-render SVG to fill new space
+      setTimeout(() => this.renderDiagram(), 300)
     })
 
     // Resize → re-render SVG
@@ -767,9 +789,20 @@ export class App {
     } else {
       this.titleEl.textContent = seq.title
       const step = currentStep >= 0 ? seq.steps[currentStep] : null
-      this.stepCounterEl.textContent = step
-        ? `Step ${currentStep + 1} / ${seq.steps.length}`
-        : `${seq.steps.length} steps`
+      // Noteのみステップは番号をスキップ
+      if (step) {
+        let arrowNum = 0
+        for (let i = 0; i <= currentStep; i++) {
+          const s = seq.steps[i]
+          if (s.from !== undefined || s.to !== undefined || s.note === undefined) arrowNum++
+        }
+        const isNoteOnly = step.from === undefined && step.to === undefined && step.note !== undefined
+        this.stepCounterEl.textContent = isNoteOnly
+          ? `Note / ${seq.steps.length} steps`
+          : `Step ${arrowNum} / ${seq.steps.length} steps`
+      } else {
+        this.stepCounterEl.textContent = `${seq.steps.length} steps`
+      }
     }
 
     // Update compare button visibility
@@ -782,18 +815,28 @@ export class App {
     const seqB = compareMode ? this.state.seqs[compareSeqIndex] : null
     const total = compareMode ? Math.max(seq?.steps.length ?? 0, seqB?.steps.length ?? 0) : (seq?.steps.length ?? 0)
 
-    // Dots
+    // Dots — Noteのみステップは番号をスキップ
+    let dotArrowNum = 0
     this.stepDotsEl.innerHTML = Array.from({ length: total }, (_, i) => {
+      const s = seq.steps[i]
+      const isNoteOnly = (s?.from === undefined && s?.to === undefined && s?.note !== undefined)
+      if (!isNoteOnly) dotArrowNum++
       const active = i === currentStep
       const visited = i < currentStep
-      const important = seq.steps[i]?.important ? 'dot-important' : ''
-      const cls = `${active ? 'dot dot-active' : visited ? 'dot dot-visited' : 'dot dot-idle'} ${important}`
-      return `<button class="${cls}" data-step="${i}" title="Step ${i + 1}"></button>`
+      const important = s?.important ? 'dot-important' : ''
+      const noteOnlyCls = isNoteOnly ? 'dot-note-only' : ''
+      const highlightCls = s?.highlight ? `dot-hl-${s.highlight}` : ''
+      const hasDesc = Boolean(s?.description && s.description.trim())
+      const descCls = hasDesc ? 'dot-has-desc' : ''
+      const cls = `${active ? 'dot dot-active' : visited ? 'dot dot-visited' : 'dot dot-idle'} ${important} ${noteOnlyCls} ${highlightCls} ${descCls}`
+      const label = (isNoteOnly ? 'Note' : `Step ${dotArrowNum}`) + (hasDesc ? ' (説明あり)' : '')
+      return `<button class="${cls}" data-step="${i}" title="${label}"></button>`
     }).join('')
 
     this.stepDotsEl.querySelectorAll('[data-step]').forEach((el) => {
       el.addEventListener('click', () => {
-        this.state.currentStep = Number((el as HTMLElement).dataset.step)
+        const idx = Number((el as HTMLElement).dataset.step)
+        this.state.currentStep = this.state.currentStep === idx ? -1 : idx
         this.stopAutoPlay()
         this.renderAll()
       })
@@ -877,16 +920,39 @@ export class App {
       `;
     }
 
+    const highlightColors: Record<string, {bg: string; color: string; border: string; label: string}> = {
+      red: {bg: '#ef444420', color: '#fca5a5', border: '#ef444440', label: '差分'},
+      green: {bg: '#22c55e20', color: '#86efac', border: '#22c55e40', label: '追加'},
+      yellow: {bg: '#eab30820', color: '#fde047', border: '#eab30840', label: '注目'},
+      purple: {bg: '#a855f720', color: '#d8b4fe', border: '#a855f740', label: '変更'},
+      cyan: {bg: '#06b6d420', color: '#67e8f9', border: '#06b6d440', label: '参考'},
+      pink: {bg: '#ec489920', color: '#f9a8d4', border: '#ec489940', label: '注意'},
+    }
     const importantBadge = step.important
-      ? `<span class="desc-important-badge" style="background: #ea580c20; color: #ff9b50; border: 1px solid #ea580c40; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px; display: inline-flex; align-items: center; gap: 3px;">★</span>`
+      ? `<span style="background: #ea580c20; color: #ff9b50; border: 1px solid #ea580c40; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px; display: inline-flex; align-items: center; gap: 3px;">★</span>`
+      : ''
+    const hlInfo = step.highlight ? highlightColors[step.highlight] : null
+    const highlightBadge = hlInfo
+      ? `<span style="background: ${hlInfo.bg}; color: ${hlInfo.color}; border: 1px solid ${hlInfo.border}; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 4px;">${hlInfo.label}</span>`
       : ''
 
     descEl.innerHTML = `
       <div class="desc-animate">
         <div class="desc-step-header" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-          <span class="desc-step-badge">Step ${currentStep + 1}</span>
+          <span class="desc-step-badge">${(() => {
+            const s = seq.steps[currentStep];
+            const isNoteOnly = s.from === undefined && s.to === undefined && s.note !== undefined;
+            if (isNoteOnly) return 'Note';
+            let num = 0;
+            for (let i = 0; i <= currentStep; i++) {
+              const ss = seq.steps[i];
+              if (ss.from !== undefined || ss.to !== undefined || ss.note === undefined) num++;
+            }
+            return `Step ${num}`;
+          })()}</span>
           <span class="desc-step-title">${esc(step.title ?? step.label ?? '')}</span>
           ${importantBadge}
+          ${highlightBadge}
         </div>
         ${arrowRow}
         ${step.description

@@ -14,6 +14,8 @@ export interface NoteDef {
   align?: 'over' | 'left' | 'right'
 }
 
+export type HighlightColor = 'red' | 'green' | 'yellow' | 'purple' | 'cyan' | 'pink'
+
 export interface Step {
   from?: string
   to?: string
@@ -23,6 +25,7 @@ export interface Step {
   description?: string
   note?: NoteDef
   important?: boolean
+  highlight?: HighlightColor
 }
 
 export interface SequenceDef {
