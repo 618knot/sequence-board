@@ -101,7 +101,7 @@ export interface RenderOptions {
 }
 
 export function renderSVG(seq: SequenceDef, opts: RenderOptions): string {
-  const { width, currentStep, prevStep } = opts
+  const { width, currentStep } = opts
   const n = seq.participants.length
   const totalSteps = seq.steps.length
 
@@ -110,49 +110,14 @@ export function renderSVG(seq: SequenceDef, opts: RenderOptions): string {
   const colW = n > 1 ? available / (n - 1) : 0
   const pX = (i: number) => n === 1 ? width / 2 : PAD_SIDE + i * colW
 
-  const firstStepY = PAD_TOP + BOX_H + 56
+  const firstStepY = 52
   const svgHeight = firstStepY + totalSteps * STEP_GAP + PAD_BOTTOM
-
   const lifelineBottom = svgHeight - PAD_BOTTOM
-
-  // ── participants ──────────────────────────────────────────────
-  const participantsG = seq.participants.map((p, i) => {
-    const cx = pX(i)
-    const isActive = currentStep >= 0 &&
-      (seq.steps[currentStep].from === p.id || seq.steps[currentStep].to === p.id)
-    
-    const wasActive = prevStep !== undefined && prevStep >= 0 && prevStep < seq.steps.length &&
-      (seq.steps[prevStep].from === p.id || seq.steps[prevStep].to === p.id)
-
-    const activeClass = isActive ? (wasActive ? 'active no-anim' : 'active') : ''
-
-    const boxColor = isActive ? COLOR_BOX_ACTIVE : COLOR_BOX_BG
-    const strokeColor = isActive ? COLOR_BOX_STROKE_ACTIVE : COLOR_BOX_STROKE
-    const strokeW = isActive ? 1.5 : 1
-    const labelColor = isActive ? COLOR_TEXT_ACTIVE : COLOR_TEXT_INACTIVE
-    const iconColor = isActive ? COLOR_ACTIVE_DIM : '#4b5563'
-
-    const rx = cx - BOX_W / 2
-    const ry = PAD_TOP
-
-    const iconY = PAD_TOP + 12
-    const textY = PAD_TOP + BOX_H - 12
-
-    return `
-      <rect class="actor-box ${activeClass}" x="${rx}" y="${ry}" width="${BOX_W}" height="${BOX_H}"
-        rx="8" fill="${boxColor}" stroke="${strokeColor}" stroke-width="${strokeW}"/>
-      ${iconSVGEmbedded(p.icon, cx, iconY + ICON_SIZE / 2, ICON_SIZE, iconColor)}
-      <text class="actor-text ${activeClass}" x="${cx}" y="${textY}"
-        text-anchor="middle" dominant-baseline="middle"
-        font-family="Inter, sans-serif" font-size="13" font-weight="500"
-        fill="${labelColor}">${escXML(p.label)}</text>
-    `
-  }).join('')
 
   // ── lifelines ─────────────────────────────────────────────────
   const lifelinesG = seq.participants.map((_, i) => {
     const cx = pX(i)
-    return `<line x1="${cx}" y1="${PAD_TOP + BOX_H}" x2="${cx}" y2="${lifelineBottom}"
+    return `<line x1="${cx}" y1="0" x2="${cx}" y2="${lifelineBottom}"
       stroke="${COLOR_LIFELINE}" stroke-width="1" stroke-dasharray="4 4"/>`
   }).join('')
 
@@ -371,10 +336,57 @@ export function renderSVG(seq: SequenceDef, opts: RenderOptions): string {
   ${highlightG}
   <g class="lifelines">${lifelinesG}</g>
   <g class="steps">${stepsG}</g>
-  <g class="participants">${participantsG}</g>
 </svg>`.trim()
 }
 
 function escXML(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+export function renderHeaderSVG(seq: SequenceDef, opts: RenderOptions): string {
+  const { width, currentStep, prevStep } = opts
+  const n = seq.participants.length
+  const available = width - PAD_SIDE * 2
+  const colW = n > 1 ? available / (n - 1) : 0
+  const pX = (i: number) => n === 1 ? width / 2 : PAD_SIDE + i * colW
+  const headerHeight = PAD_TOP + BOX_H + 16
+
+  const participantsG = seq.participants.map((p, i) => {
+    const cx = pX(i)
+    const isActive = currentStep >= 0 &&
+      (seq.steps[currentStep].from === p.id || seq.steps[currentStep].to === p.id)
+    const wasActive = prevStep !== undefined && prevStep >= 0 && prevStep < seq.steps.length &&
+      (seq.steps[prevStep].from === p.id || seq.steps[prevStep].to === p.id)
+
+    const activeClass = isActive ? (wasActive ? 'active no-anim' : 'active') : ''
+    const boxColor = isActive ? COLOR_BOX_ACTIVE : COLOR_BOX_BG
+    const strokeColor = isActive ? COLOR_BOX_STROKE_ACTIVE : COLOR_BOX_STROKE
+    const strokeW = isActive ? 1.5 : 1
+    const labelColor = isActive ? COLOR_TEXT_ACTIVE : COLOR_TEXT_INACTIVE
+    const iconColor = isActive ? COLOR_ACTIVE_DIM : '#4b5563'
+
+    const rx = cx - BOX_W / 2
+    const ry = PAD_TOP
+    const iconY = PAD_TOP + 12
+    const textY = PAD_TOP + BOX_H - 12
+
+    return `
+      <rect class="actor-box ${activeClass}" x="${rx}" y="${ry}" width="${BOX_W}" height="${BOX_H}"
+        rx="8" fill="${boxColor}" stroke="${strokeColor}" stroke-width="${strokeW}"/>
+      ${iconSVGEmbedded(p.icon, cx, iconY + ICON_SIZE / 2, ICON_SIZE, iconColor)}
+      <text class="actor-text ${activeClass}" x="${cx}" y="${textY}"
+        text-anchor="middle" dominant-baseline="middle"
+        font-family="Inter, sans-serif" font-size="13" font-weight="500"
+        fill="${labelColor}">${escXML(p.label)}</text>
+    `
+  }).join('')
+
+  return `
+<svg xmlns="http://www.w3.org/2000/svg"
+  width="${width}" height="${headerHeight}"
+  viewBox="0 0 ${width} ${headerHeight}">
+  <rect x="0" y="0" width="${width}" height="${headerHeight}" fill="#0f0f0f"/>
+  <g class="participants">${participantsG}</g>
+  <line x1="0" y1="${headerHeight}" x2="${width}" y2="${headerHeight}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+</svg>`.trim()
 }

@@ -1,6 +1,6 @@
 import type { SequenceDef } from './types'
 import { parseYAML } from './parser'
-import { renderSVG } from './renderer'
+import { renderSVG, renderHeaderSVG } from './renderer'
 import { marked } from 'marked'
 
 const DEFAULT_YAML = `title: "ユーザー認証フロー"
@@ -222,6 +222,7 @@ export class App {
     <!-- Left: SVG diagram(s) -->
     <div class="diagram-panel" id="diagram-panel">
       <div class="diagram-tabs-row hidden" id="diagram-tabs"></div>
+      <div class="diagram-header-fixed" id="diagram-header-fixed"></div>
       <div class="diagram-scroll" id="diagram-scroll">
         <div id="diagram-svg-container"></div>
       </div>
@@ -712,6 +713,10 @@ export class App {
     if (!seq) { this.diagramEl.innerHTML = ''; return }
 
     const w = this.diagramEl.parentElement?.clientWidth ?? 800
+    const headerEl = document.querySelector('#diagram-header-fixed')
+    if (headerEl) {
+      headerEl.innerHTML = renderHeaderSVG(seq, { width: w, currentStep, prevStep: this.prevStep })
+    }
     this.diagramEl.innerHTML = renderSVG(seq, { width: w, currentStep, prevStep: this.prevStep })
     this.prevStep = currentStep
   }

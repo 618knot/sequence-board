@@ -1096,3 +1096,22 @@ svg text {
   background-color: #fb923c;
   box-shadow: 0 0 4px rgba(251, 146, 60, 0.8);
 }
+
+/* ══════════════ Fixed Participant Header ══════════════ */
+.diagram-header-fixed, .compare-header-fixed {
+  flex-shrink: 0;
+  background-color: var(--color-bg-dark);
+  display: flex;
+  justify-content: center;
+  z-index: 10;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.diagram-header-fixed svg, .compare-header-fixed svg {
+  display: block;
+}
+
+.diagram-scroll {
+  padding-top: 0 !important;
+}
